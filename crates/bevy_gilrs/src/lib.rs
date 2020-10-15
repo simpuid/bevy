@@ -3,6 +3,7 @@ mod gilrs_system;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use gilrs::GilrsBuilder;
 use gilrs_system::{gilrs_startup_system, gilrs_update_system};
 
 #[derive(Default)]
@@ -10,7 +11,7 @@ pub struct GilrsPlugin;
 
 impl Plugin for GilrsPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        match gilrs::Gilrs::new() {
+        match GilrsBuilder::new().set_update_state(false).build() {
             Ok(gilrs) => {
                 app.add_thread_local_resource(gilrs)
                     .add_startup_system(gilrs_startup_system.thread_local_system())

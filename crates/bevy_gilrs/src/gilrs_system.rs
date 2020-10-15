@@ -2,7 +2,7 @@ use crate::converter::{convert_axis, convert_button, convert_gamepad_id};
 use bevy_app::Events;
 use bevy_ecs::{Resources, World};
 use bevy_input::prelude::*;
-use gilrs::{Button, EventType, Gilrs};
+use gilrs::{EventType, Gilrs};
 
 pub fn gilrs_startup_system(_world: &mut World, resources: &mut Resources) {
     let gilrs = resources.get_thread_local::<Gilrs>().unwrap();
@@ -11,9 +11,8 @@ pub fn gilrs_startup_system(_world: &mut World, resources: &mut Resources) {
     let mut axes = resources.get_mut::<Axis<GamepadAxis>>().unwrap();
     gamepad_event.update();
     inputs.update();
-    for (gilrs_id, gilrs_gamepad) in gilrs.gamepads() {
+    for (gilrs_id, _) in gilrs.gamepads() {
         connect_gamepad(
-            gilrs_gamepad,
             convert_gamepad_id(gilrs_id),
             &mut gamepad_event,
             &mut inputs,
@@ -34,7 +33,6 @@ pub fn gilrs_update_system(_world: &mut World, resources: &mut Resources) {
         match gilrs_event.event {
             EventType::Connected => {
                 connect_gamepad(
-                    gilrs.gamepad(gilrs_event.id),
                     convert_gamepad_id(gilrs_event.id),
                     &mut gamepad_event,
                     &mut inputs,
@@ -79,60 +77,50 @@ pub fn gilrs_update_system(_world: &mut World, resources: &mut Resources) {
     gilrs.inc();
 }
 
-const ALL_GILRS_BUTTONS: [Button; 19] = [
-    Button::South,
-    Button::East,
-    Button::North,
-    Button::West,
-    Button::C,
-    Button::Z,
-    Button::LeftTrigger,
-    Button::LeftTrigger2,
-    Button::RightTrigger,
-    Button::RightTrigger2,
-    Button::Select,
-    Button::Start,
-    Button::Mode,
-    Button::LeftThumb,
-    Button::RightThumb,
-    Button::DPadUp,
-    Button::DPadDown,
-    Button::DPadLeft,
-    Button::DPadRight,
+const ALL_GAMEPAD_BUTTON_TYPES: [GamepadButtonType; 19] = [
+    GamepadButtonType::South,
+    GamepadButtonType::East,
+    GamepadButtonType::North,
+    GamepadButtonType::West,
+    GamepadButtonType::C,
+    GamepadButtonType::Z,
+    GamepadButtonType::LeftTrigger,
+    GamepadButtonType::LeftTrigger2,
+    GamepadButtonType::RightTrigger,
+    GamepadButtonType::RightTrigger2,
+    GamepadButtonType::Select,
+    GamepadButtonType::Start,
+    GamepadButtonType::Mode,
+    GamepadButtonType::LeftThumb,
+    GamepadButtonType::RightThumb,
+    GamepadButtonType::DPadUp,
+    GamepadButtonType::DPadDown,
+    GamepadButtonType::DPadLeft,
+    GamepadButtonType::DPadRight,
 ];
 
-const ALL_GILRS_AXES: [gilrs::Axis; 8] = [
-    gilrs::Axis::LeftStickX,
-    gilrs::Axis::LeftStickY,
-    gilrs::Axis::LeftZ,
-    gilrs::Axis::RightStickX,
-    gilrs::Axis::RightStickY,
-    gilrs::Axis::RightZ,
-    gilrs::Axis::DPadX,
-    gilrs::Axis::DPadY,
+const ALL_GAMEPAD_AXIS_TYPES: [GamepadAxisType; 8] = [
+    GamepadAxisType::LeftStickX,
+    GamepadAxisType::LeftStickY,
+    GamepadAxisType::LeftZ,
+    GamepadAxisType::RightStickX,
+    GamepadAxisType::RightStickY,
+    GamepadAxisType::RightZ,
+    GamepadAxisType::DPadX,
+    GamepadAxisType::DPadY,
 ];
 
 fn connect_gamepad(
-    gilrs_gamepad: gilrs::Gamepad,
     gamepad: Gamepad,
     events: &mut Events<GamepadEvent>,
     inputs: &mut Input<GamepadButton>,
     axes: &mut Axis<GamepadAxis>,
 ) {
-    for gilrs_button in ALL_GILRS_BUTTONS.iter() {
-        if let Some(button_type) = convert_button(*gilrs_button) {
-            let gamepad_button = GamepadButton(gamepad, button_type);
-            inputs.reset(gamepad_button);
-            if gilrs_gamepad.is_pressed(*gilrs_button) {
-                inputs.press(gamepad_button);
-            }
-        }
+    for button_type in ALL_GAMEPAD_BUTTON_TYPES.iter() {
+        inputs.reset(GamepadButton(gamepad, *button_type));
     }
-    for gilrs_axis in ALL_GILRS_AXES.iter() {
-        if let Some(axis_type) = convert_axis(*gilrs_axis) {
-            let gamepad_axis = GamepadAxis(gamepad, axis_type);
-            axes.set(gamepad_axis, gilrs_gamepad.value(*gilrs_axis));
-        }
+    for axis_type in ALL_GAMEPAD_AXIS_TYPES.iter() {
+        axes.set(GamepadAxis(gamepad, *axis_type), 0.0f32);
     }
     events.send(GamepadEvent(gamepad, GamepadEventType::Connected));
 }
@@ -143,17 +131,11 @@ fn disconnect_gamepad(
     inputs: &mut Input<GamepadButton>,
     axes: &mut Axis<GamepadAxis>,
 ) {
-    for gilrs_button in ALL_GILRS_BUTTONS.iter() {
-        if let Some(button_type) = convert_button(*gilrs_button) {
-            let gamepad_button = GamepadButton(gamepad, button_type);
-            inputs.reset(gamepad_button);
-        }
+    for button_type in ALL_GAMEPAD_BUTTON_TYPES.iter() {
+        inputs.reset(GamepadButton(gamepad, *button_type));
     }
-    for gilrs_axis in ALL_GILRS_AXES.iter() {
-        if let Some(axis_type) = convert_axis(*gilrs_axis) {
-            let gamepad_axis = GamepadAxis(gamepad, axis_type);
-            axes.remove(&gamepad_axis);
-        }
+    for axis_type in ALL_GAMEPAD_AXIS_TYPES.iter() {
+        axes.remove(&GamepadAxis(gamepad, *axis_type));
     }
     events.send(GamepadEvent(gamepad, GamepadEventType::Disconnected));
 }
